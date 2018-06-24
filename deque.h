@@ -244,7 +244,7 @@ void deque<T>::swap(deque& other) {
 
 template<typename T>
 void deque<T>::push_back(const T &value) {
-    if (size_ == capacity_) {
+    if (size_ + 1 >= capacity_) {
         resize();
     }
     new (data_ + end_) T(value);
@@ -254,7 +254,7 @@ void deque<T>::push_back(const T &value) {
 
 template<typename T>
 void deque<T>::push_front(const T &value) {
-    if (size_ == capacity_) {
+    if (size_ + 1 >= capacity_) {
         resize();
     }
     new (data_ + prv(begin_)) T(value);
@@ -319,7 +319,7 @@ typename deque<T>::const_reverse_iterator deque<T>::rend() const {
 template<typename T>
 typename deque<T>::iterator deque<T>::insert(deque::const_iterator it, const T &value) {
     size_t pos = size_t(it - begin());
-    if (size_ == capacity_) {
+    if (size_ + 1 >= capacity_) {
         resize();
     }
     if (pos < size_ - pos) {
