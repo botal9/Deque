@@ -110,7 +110,8 @@ private:
         operator delete(data_);
         data_ = new_data;
         capacity_ = new_capacity;
-        begin_ = end_ = size_ = 0;
+        begin_ = 0;
+        end_ = size_;
     }
 
     size_t make_capacity(size_t capacity) {
