@@ -256,15 +256,15 @@ void deque<T>::push_front(const T &value) {
     if (size_ == capacity_) {
         resize();
     }
+    new (data_ + prv(begin_)) T(value);
     begin_ = prv(begin_);
-    new (data_ + begin_) T(value);
     ++size_;
 }
 
 template<typename T>
 void deque<T>::pop_back() {
+    data_[prv(end_)].~T();
     end_ = prv(end_);
-    data_[end_].~T();
     --size_;
 }
 
@@ -287,12 +287,12 @@ typename deque<T>::const_iterator deque<T>::begin() const {
 
 template<typename T>
 typename deque<T>::iterator deque<T>::end() {
-    return iterator(data_ + end_, end_, end_, capacity_);
+    return iterator(data_ + end_, begin_, end_, capacity_);
 }
 
 template<typename T>
 typename deque<T>::const_iterator deque<T>::end() const {
-    return const_iterator(data_ + end_, end_, end_, capacity_);
+    return const_iterator(data_ + end_, begin_, end_, capacity_);
 }
 
 template<typename T>
