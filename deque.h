@@ -6,6 +6,7 @@
 #define DEQUE_DEQUE_H
 
 #include <iterator>
+#include <cstring>
 
 static size_t DEFAULT_CAPACITY = 10;
 
@@ -101,17 +102,46 @@ private:
     T* data_ = nullptr;
     size_t size_ = 0;
     size_t capacity_ = 0;
-    size_t bigin_ = 0;
+    size_t begin_ = 0;
     size_t end_ = 0;
 
-    void resize(size_t capacity);
+    void resize() {
+        size_t new_capacity = make_capacity(capacity_);
+        T* new_data = operator new(new_capacity);
+        size_t pos = 0;
+        for (size_t i = begin_; i != end_; i = nxt(i), ++pos) {
+            new_data[pos] = data_[i];
+            data_[i].~T();
+        }
+        operator delete(data_);
+        data_ = new_data;
+        capacity_ = new_capacity;
+        begin_ = 0;
+        end_ = size_;
+    }
 
-    size_t make_capacity(size_t capacity);
+    size_t make_capacity(size_t capacity) {
+        return capacity ? capacity* 2 : DEFAULT_CAPACITY;
+    }
+
+    size_t nxt(size_t i) {
+        if (i + 1 == capacity_) {
+            return 0;
+        }
+        return i + 1;
+    }
+
+    size_t prv(size_t i) {
+        if (i == 0) {
+            return capacity_ - 1;
+        }
+        return i - 1;
+    }
 
 public:
     deque() = default;
 
-    explicit deque(size_t size);
+    explicit deque(size_t n);
 
     deque(deque const& other);
 
@@ -119,7 +149,7 @@ public:
 
     ~deque();
 
-    void swap(deque other);
+    void swap(deque& other);
 
 
     void push_back(T const& value);
@@ -171,6 +201,129 @@ public:
 
     void clear();
 };
+
+//---------------------------------------------
+//--------------------DEQUE--------------------
+//---------------------------------------------
+
+template<typename T>
+deque<T>::deque(size_t n) : deque() {
+    data_ = operator new(sizeof(T) * n);
+    capacity_ = n;
+}
+
+template<typename T>
+deque<T>::deque(deque const &other) :
+        size_(other.size_), capacity_(other.capacity_), begin_(other.begin_), end_(other.end_)
+{
+    data_ = operator new(sizeof(T) * capacity_);
+    for (size_t i = begin_; i != end_; i = nxt(i)) {
+        data_[i] = other.data_[i];
+    }
+    //memcpy(data_, other.data_, sizeof(T) * capacity_);
+    //std::copy(other.data_, other.data_ + other.capacity_, data_);
+}
+
+template<typename T>
+deque<T> &deque<T>::operator=(deque const& other) {
+    if (&other != this) {
+        deque(other).swap(*this);
+    }
+    return *this;
+}
+
+template<typename T>
+deque<T>::~deque() {
+    for (size_t i = begin_; i != end_; i = nxt(i)) {
+        (data_ + i)->~T();
+    }
+    operator delete(data_);
+}
+
+template<typename T>
+void deque<T>::swap(deque& other) {
+    using std::swap;
+    swap(data_, other.data_);
+    swap(size_, other.size_);
+    swap(capacity_, other.capacity_);
+    swap(begin_, other.begin_);
+    swap(end_, other.end_);
+}
+
+
+template<typename T>
+void deque<T>::push_back(const T &value) {
+    if (size_ == capacity_) {
+        resize();
+    }
+    data_[end_] = value;
+    end_ = nxt(end_);
+    ++size_;
+}
+
+template<typename T>
+void deque<T>::push_front(const T &value) {
+    if (size_ == capacity_) {
+        resize();
+    }
+    begin_ = prv(begin_);
+    data_[begin_] = value;
+    ++size_;
+}
+
+template<typename T>
+void deque<T>::pop_back() {
+    end_ = prv(end_);
+    data_[end_].~T();
+    --size_;
+}
+
+template<typename T>
+void deque<T>::pop_front() {
+    data_[begin_].~T();
+    begin_ = nxt(begin_);
+    --size_;
+}
+
+template<typename T>
+typename deque<T>::iterator deque<T>::begin() {
+    return iterator_impl<T*>(data_ + begin_, begin_, begin_, capacity_);
+}
+
+template<typename T>
+typename deque<T>::const_iterator deque<T>::begin() const {
+    return iterator_impl<T const*>(data_ + begin_, begin_, begin_, capacity_);
+}
+
+template<typename T>
+typename deque<T>::iterator deque<T>::end() {
+    return iterator_impl<T*>(data_ + end_, end_, end_, capacity_);
+}
+
+template<typename T>
+typename deque<T>::const_iterator deque<T>::end() const {
+    return iterator_impl<T const*>(data_ + end_, end_, end_, capacity_);
+}
+
+template<typename T>
+typename deque<T>::reverse_iterator deque<T>::rbegin() {
+    return std::reverse_iterator(begin());
+}
+
+template<typename T>
+typename deque<T>::const_reverse_iterator deque<T>::rbegin() const {
+    return std::reverse_iterator(begin());
+}
+
+template<typename T>
+typename deque<T>::reverse_iterator deque<T>::rend() {
+    return std::reverse_iterator(end());
+}
+
+template<typename T>
+typename deque<T>::const_reverse_iterator deque<T>::rend() const {
+    return std::reverse_iterator(end());
+}
 
 //---------------------------------------------
 //------------------ITERATOR-------------------
@@ -317,11 +470,5 @@ template<typename U>
 U* deque<T>::iterator_impl<U>::operator->() const {
     return ptr_;
 }
-
-
-//---------------------------------------------
-//--------------------DEQUE--------------------
-//---------------------------------------------
-
 
 #endif //DEQUE_DEQUE_H
