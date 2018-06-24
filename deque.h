@@ -6,7 +6,6 @@
 #define DEQUE_DEQUE_H
 
 #include <iterator>
-#include <cstring>
 
 static size_t DEFAULT_CAPACITY = 10;
 
@@ -33,8 +32,7 @@ public:
         using reference = U&;
 
         template <typename V>
-        iterator_impl(iterator_impl<V> const& other,
-                      typename std::enable_if<std::is_same<U, const V>::value>::type * = nullptr);
+        iterator_impl(iterator_impl<V> const& other);
 
         iterator_impl& operator=(iterator_impl<U> const& other) = default;
 
@@ -205,20 +203,15 @@ public:
 
 template<typename T>
 deque<T>::deque(size_t n) : deque() {
-    data_ = operator new(sizeof(T) * n);
+    data_ = static_cast<T*>(operator new(sizeof(T) * n));
     capacity_ = n;
 }
 
 template<typename T>
-deque<T>::deque(deque const &other) :
-        size_(other.size_), capacity_(other.capacity_), begin_(other.begin_), end_(other.end_)
-{
-    data_ = static_cast<T*>(operator new(sizeof(T) * capacity_));
-    for (size_t i = begin_; i != end_; i = nxt(i)) {
-        data_[i] = other.data_[i];
+deque<T>::deque(deque const &other) : deque(other.capacity_) {
+    for (size_t i = other.begin_; i != other.end_; i = other.nxt(i)) {
+        push_back(other.data_[i]);
     }
-    //memcpy(data_, other.data_, sizeof(T) * capacity_);
-    //std::copy(other.data_, other.data_ + other.capacity_, data_);
 }
 
 template<typename T>
@@ -436,8 +429,7 @@ deque<T>::iterator_impl<U>::iterator_impl(U* ptr, size_t begin, size_t pos, size
 template<typename T>
 template<typename U>
 template<typename V>
-deque<T>::iterator_impl<U>::iterator_impl(const deque::iterator_impl<V> &other,
-                  typename std::enable_if<std::is_same<U, const V>::value>::type*) :
+deque<T>::iterator_impl<U>::iterator_impl(const deque::iterator_impl<V> &other) :
         ptr_(other.ptr_), begin_(other.begin_), pos_(other.pos_), capacity_(other.capacity_)
 {}
 
