@@ -16,35 +16,27 @@ public:
     template <typename U>
     class iterator_impl;
 
-    typedef T value_type;
-    typedef T* pointer;
-    typedef T& reference;
-    typedef ptrdiff_t difference_type;
-    typedef std::random_access_iterator_tag iterator_category;
-    typedef iterator_impl<T> iterator;
-    typedef iterator_impl<T const> const_iterator;
-    typedef std::reverse_iterator<iterator> reverse_iterator;
-    typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+    using iterator = iterator_impl<T>;
+    using const_iterator = iterator_impl<T const>;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     template <typename U>
-    class iterator_impl :
-        public std::iterator<
-                iterator_category,
-                value_type,
-                difference_type,
-                pointer,
-                reference
-        >
-    {
+    class iterator_impl {
     public:
         friend class deque;
 
+        using iterator_category = std::random_access_iterator_tag;
+        using value_type = U;
+        using difference_type = ptrdiff_t;
+        using pointer = U*;
+        using reference = U&;
 
         template <typename V>
         iterator_impl(iterator_impl<V> const& other,
                       typename std::enable_if<std::is_same<U, const V>::value>::type * = nullptr);
 
-        iterator_impl& operator=(iterator_impl const& other) = default;
+        iterator_impl& operator=(iterator_impl<U> const& other) = default;
 
 
         iterator_impl& operator++();
@@ -183,7 +175,7 @@ public:
 
     iterator insert(const_iterator it, T const& value);
 
-    iterator erase(const_iterator pos);
+    iterator erase(const_iterator it);
 
 
     T& operator[](size_t pos);
@@ -205,8 +197,6 @@ public:
     void clear();
 
     size_t size() const;
-
-    friend void swap(deque& a, deque& b);
 };
 
 //---------------------------------------------
@@ -428,7 +418,7 @@ size_t deque<T>::size() const {
     return size_;
 }
 
-template<typename T>
+template <typename T>
 void swap(deque<T> &a, deque<T> &b) {
     a.swap(b);
 }
