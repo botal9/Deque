@@ -99,38 +99,15 @@ private:
     size_t begin_ = 0;
     size_t end_ = 0;
 
-    void resize() {
-        size_t new_capacity = make_capacity(capacity_);
-        T* new_data = static_cast<T*>(operator new(sizeof(T) * new_capacity));
-        size_t pos = 0;
-        for (size_t i = begin_; i != end_; i = nxt(i), ++pos) {
-            new_data[pos] = data_[i];
-            data_[i].~T();
-        }
-        operator delete(data_);
-        data_ = new_data;
-        capacity_ = new_capacity;
-        begin_ = 0;
-        end_ = size_;
-    }
+    void resize();
 
-    size_t make_capacity(size_t capacity) {
-        return capacity ? capacity * 2 : DEFAULT_CAPACITY;
-    }
+    bool is_full();
 
-    size_t nxt(size_t i) const {
-        if (i + 1 == capacity_) {
-            return 0;
-        }
-        return i + 1;
-    }
+    size_t make_capacity(size_t capacity);
 
-    size_t prv(size_t i) const {
-        if (i == 0) {
-            return capacity_ - 1;
-        }
-        return i - 1;
-    }
+    size_t nxt(size_t i) const;
+
+    size_t prv(size_t i) const;
 
 public:
     deque() = default;
@@ -142,8 +119,6 @@ public:
     deque& operator=(deque const& other);
 
     ~deque();
-
-    void swap(deque& other);
 
 
     void push_back(T const& value);
@@ -196,6 +171,8 @@ public:
     void clear();
 
     size_t size() const;
+
+    void swap(deque& other);
 };
 
 //---------------------------------------------
@@ -210,8 +187,9 @@ deque<T>::deque(size_t n) : deque() {
 
 template<typename T>
 deque<T>::deque(deque const &other) : deque(other.capacity_) {
-    for (size_t i = other.begin_; i != other.end_; i = other.nxt(i)) {
-        push_back(other.data_[i]);
+    for (size_t i = other.begin_, pos = 0; i != other.end_; i = other.nxt(i), ++pos) {
+        new (data_ + pos) T(other.data_[i]);
+        ++end_, ++size_;
     }
 }
 
@@ -244,7 +222,7 @@ void deque<T>::swap(deque& other) {
 
 template<typename T>
 void deque<T>::push_back(const T &value) {
-    if (size_ + 1 >= capacity_) {
+    if (is_full()) {
         resize();
     }
     new (data_ + end_) T(value);
@@ -254,7 +232,7 @@ void deque<T>::push_back(const T &value) {
 
 template<typename T>
 void deque<T>::push_front(const T &value) {
-    if (size_ + 1 >= capacity_) {
+    if (is_full()) {
         resize();
     }
     new (data_ + prv(begin_)) T(value);
@@ -319,7 +297,7 @@ typename deque<T>::const_reverse_iterator deque<T>::rend() const {
 template<typename T>
 typename deque<T>::iterator deque<T>::insert(deque::const_iterator it, const T &value) {
     size_t pos = size_t(it - begin());
-    if (size_ + 1 >= capacity_) {
+    if (is_full()) {
         resize();
     }
     if (pos < size_ - pos) {
@@ -334,7 +312,7 @@ typename deque<T>::iterator deque<T>::insert(deque::const_iterator it, const T &
         }
     }
     operator[](pos) = value;
-    size_t index = (pos + begin_ < capacity_ ? pos + begin_ : pos + begin_ - capacity_);
+    size_t index = pos + begin_ < capacity_ ? pos + begin_ : pos + begin_ - capacity_;
     return iterator(data_ + index, begin_, index, capacity_);
 }
 
@@ -352,7 +330,7 @@ typename deque<T>::iterator deque<T>::erase(deque::const_iterator it) {
         }
         pop_back();
     }
-    size_t index = (pos + begin_ < capacity_ ? pos + begin_ : pos + begin_ - capacity_);
+    size_t index = pos + begin_ < capacity_ ? pos + begin_ : pos + begin_ - capacity_;
     return iterator(data_ + index, begin_, index, capacity_);
 }
 
@@ -416,6 +394,50 @@ template <typename T>
 void swap(deque<T> &a, deque<T> &b) {
     a.swap(b);
 }
+
+
+
+template<typename T>
+void deque<T>::resize() {
+    size_t new_capacity = make_capacity(capacity_);
+    T* new_data = static_cast<T*>(operator new(sizeof(T) * new_capacity));
+    for (size_t i = begin_, pos = 0; i != end_; i = nxt(i), ++pos) {
+        new (new_data + pos) T(data_[i]);
+        data_[i].~T();
+    }
+    operator delete(data_);
+    data_ = new_data;
+    capacity_ = new_capacity;
+    begin_ = 0;
+    end_ = size_;
+}
+
+template<typename T>
+bool deque<T>::is_full() {
+    return size_ + 1 >= capacity_;
+}
+
+template<typename T>
+size_t deque<T>::make_capacity(size_t capacity) {
+    return capacity ? capacity * 2 : DEFAULT_CAPACITY;
+}
+
+template<typename T>
+size_t deque<T>::nxt(size_t i) const {
+    if (i + 1 == capacity_) {
+        return 0;
+    }
+    return i + 1;
+}
+
+template<typename T>
+size_t deque<T>::prv(size_t i) const {
+    if (i == 0) {
+        return capacity_ - 1;
+    }
+    return i - 1;
+}
+
 
 //---------------------------------------------
 //------------------ITERATOR-------------------
@@ -508,7 +530,7 @@ template<typename T>
 template<typename U>
 template<typename V>
 ptrdiff_t deque<T>::iterator_impl<U>::operator-(const deque::iterator_impl<V> &other) const {
-    if (((pos_ < begin_) ^ (other.pos_ < other.begin_)) == 0) {
+    if ((pos_ < begin_) == (other.pos_ < other.begin_)) {
         return pos_ - other.pos_;
     }
     if (this->pos_ < other.pos_) {
@@ -536,7 +558,7 @@ template<typename T>
 template<typename U>
 template<typename V>
 bool deque<T>::iterator_impl<U>::operator<(const deque::iterator_impl<V> &other) const {
-    if ((this->pos_ >= this->begin_) ^ (other.pos_ >= other.begin_)) {
+    if ((this->pos_ >= this->begin_) != (other.pos_ >= other.begin_)) {
         return this->pos_ < other.pos_;
     }
     return this->pos_ > other.pos_;
